@@ -42,6 +42,7 @@ static double nonLin;
 
 static unsigned int currGroupIdx = 0;
 static unsigned int currAnimFrame = 0;
+static GLfloat currWidth, currHeight;
 
 /* --- initialization routines ---------------------------------------------- */
 
@@ -89,7 +90,7 @@ void animInit(void) {
 	glDisable(GL_DEPTH_TEST);
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
-	glLineWidth(2.0);
+	glLineWidth(1.5);
 }
 
 /* --- animation routines --------------------------------------------------- */
@@ -123,7 +124,7 @@ void drawInterpCurve(double x, double y, double width, double height, unsigned i
 	double t;
 
 	glBegin(GL_LINE_STRIP);
-	glColor3f(1, 1, 1);
+	glColor4f(1.0f, 1.0f, 1.0f, 0.4f);
 	for (i = 0; i < samples; i++) {
 		t = i / (double) samples;
 		glVertex2f(x + width * t, y + height * animEase(t, nonLin));
@@ -152,7 +153,7 @@ void animDisplay(void) {
 		);
 	}
 
-	drawInterpCurve(0, 0, 80, 40, 100);
+	drawInterpCurve(currWidth / 2 - 55, -currHeight / 2 + 5, 50, 30, 100);
 
 	currAnimFrame = (currAnimFrame + 1) % animFrames;
 	if (!currAnimFrame) currGroupIdx = nextGroupIdx;
@@ -163,17 +164,25 @@ void animDisplay(void) {
 void animReshape(GLsizei width, GLsizei height) {
 	GLfloat aspect;
 
+	// save new width & height
 	if (!height) height = 1;
-	aspect = (GLfloat) width / (GLfloat) height;
+	if (!width) width = 1;
 
+	// resize viewport
 	glViewport(0, 0, width, height);
 
+	// resize clipping area
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
+	aspect = (GLfloat) width / (GLfloat) height;
 	if (width >= height) {
 		gluOrtho2D(-aspect * SCALE, aspect * SCALE, -SCALE, SCALE);
+		currHeight = 2 * SCALE;
+		currWidth = 2 * SCALE * aspect;
 	} else {
 		gluOrtho2D(-SCALE, SCALE, -SCALE / aspect, SCALE / aspect);
+		currWidth = 2 * SCALE;
+		currWidth = 2 * SCALE / aspect;
 	}
 }
 
