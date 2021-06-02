@@ -17,19 +17,26 @@
 
 /* --- user-set parameters -------------------------------------------------- */
 
-#define CIRCLE_PTS		5
-#define SCALE			14.5
+#define CIRCLE_PTS		200
+#define SCALE			200.0f
 #define ALPHA			0.27f
 #define FRAMERATE		60
-#define MULTISAMPLING	6
+#define MULTISAMPLING	16
 
 double animDuration = 2.7;
-double nonLinearity = 18;
+int nonLinCtl = 12; // bounds: NON_LIN_CTL_LO, NON_LIN_CTL_HI
 
-/* --- precomputed constants ------------------------------------------------ */
+/* --- constants ------------------------------------------------------------ */
 
+#define NON_LIN_CTL_HI		21
+#define NON_LIN_CTL_LO		-1
+#define DURATION_CTL_LO		0.2
+#define DURATION_CTL_DELTA	0.05
+
+/* precomputed in main */
 static unsigned int refreshMillis;
 static unsigned int animFrames;
+static double nonLin;
 
 /* --- animation trackers --------------------------------------------------- */
 
@@ -63,22 +70,11 @@ void circInit(void) {
 }
 
 void animInit(void) {
-	//glutSetOption(GLUT_MULTISAMPLE, MULTISAMPLING);
-	//glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_ALPHA | GLUT_MULTISAMPLE);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_ALPHA);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
 	glutCreateWindow("Circles");
 	glutFullScreen();
 	glutSetCursor(GLUT_CURSOR_NONE);
-
-	glEnable(GL_POLYGON_SMOOTH);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-	glEnable(GL_LINE_SMOOTH);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glEnable(GL_POINT_SMOOTH);
-	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-
-    glDisable(GL_MULTISAMPLE);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA_SATURATE, GL_ONE); // (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)?
@@ -86,12 +82,14 @@ void animInit(void) {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-	//glEnable(GL_MULTISAMPLE);
-	//glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+	glEnable(GL_MULTISAMPLE);
+	glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+	glutSetOption(GLUT_MULTISAMPLE, MULTISAMPLING);
 
 	glDisable(GL_DEPTH_TEST);
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glLineWidth(2.0);
 }
 
 /* --- animation routines --------------------------------------------------- */
@@ -115,9 +113,22 @@ void drawCircle(double cx, double cy, double r) {
 	glEnd();
 }
 
-double animEase(double t, double nonLinearity) {
-	if (t < 0.5) return 0.5 * pow(2 * t, nonLinearity);
-	else return 1 - 0.5 * pow(2 * (1 - t), nonLinearity);
+double animEase(double t, double nonLin) {
+	if (t < 0.5) return 0.5 * pow(2 * t, nonLin);
+	else return 1 - 0.5 * pow(2 * (1 - t), nonLin);
+}
+
+void drawInterpCurve(double x, double y, double width, double height, unsigned int samples) {
+	unsigned int i;
+	double t;
+
+	glBegin(GL_LINE_STRIP);
+	glColor3f(1, 1, 1);
+	for (i = 0; i < samples; i++) {
+		t = i / (double) samples;
+		glVertex2f(x + width * t, y + height * animEase(t, nonLin));
+	}
+	glEnd();
 }
 
 void animDisplay(void) {
@@ -128,7 +139,7 @@ void animDisplay(void) {
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	interpolateStep = animEase(currAnimFrame / (double) animFrames, nonLinearity);
+	interpolateStep = animEase(currAnimFrame / (double) animFrames, nonLin);
 	nextGroupIdx = (currGroupIdx + 1) % NUM_GROUPS;
 	currGroup = circleGroups[groupOrder[currGroupIdx]];
 	nextGroup = circleGroups[groupOrder[nextGroupIdx]];
@@ -141,6 +152,8 @@ void animDisplay(void) {
 		);
 	}
 
+	drawInterpCurve(0, 0, 80, 40, 100);
+
 	currAnimFrame = (currAnimFrame + 1) % animFrames;
 	if (!currAnimFrame) currGroupIdx = nextGroupIdx;
 
@@ -148,26 +161,64 @@ void animDisplay(void) {
 }
 
 void animReshape(GLsizei width, GLsizei height) {
-	double aspect = width / (double) height;
+	GLfloat aspect;
+
+	if (!height) height = 1;
+	aspect = (GLfloat) width / (GLfloat) height;
 
 	glViewport(0, 0, width, height);
+
 	glMatrixMode(GL_PROJECTION);
-
-	if (width <= height) {
-		gluOrtho2D(-SCALE, SCALE, -aspect * SCALE, aspect * SCALE);
-	} else {
-		gluOrtho2D(-aspect * SCALE, aspect * SCALE, -SCALE, SCALE);
-	}
-
-	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	if (width >= height) {
+		gluOrtho2D(-aspect * SCALE, aspect * SCALE, -SCALE, SCALE);
+	} else {
+		gluOrtho2D(-SCALE, SCALE, -SCALE / aspect, SCALE / aspect);
+	}
 }
 
-// TODO control animFrames & nonLinearity with keys
 void animKeyboard(unsigned char key, int x, int y) {
 	switch (key) {
 		case 27: // esc
 			exit(EXIT_SUCCESS);
+			break;
+		default:
+			break;
+	}
+}
+
+double nonLinCtlCurve(int nonLinCtl) {
+	if (nonLinCtl == -1) return 1;
+	else return pow(2, nonLinCtl / 2.0 - 2) + 1;
+}
+
+void animSpecialKeys(int key, int x, int y) {
+	unsigned int oldAnimFrames;
+
+	switch (key) {
+		case GLUT_KEY_RIGHT:
+			if (animDuration > DURATION_CTL_LO) {
+				animDuration -= DURATION_CTL_DELTA;
+				oldAnimFrames = animFrames;
+				animFrames = animDuration * FRAMERATE;
+				currAnimFrame = currAnimFrame / (double) oldAnimFrames * animFrames;
+			}
+			break;
+		case GLUT_KEY_LEFT:
+			animDuration += DURATION_CTL_DELTA;
+			oldAnimFrames = animFrames;
+			animFrames = animDuration * FRAMERATE;
+			currAnimFrame = currAnimFrame / (double) oldAnimFrames * animFrames;
+			break;
+		case GLUT_KEY_UP:
+			if (nonLinCtl < NON_LIN_CTL_HI) {
+				nonLin = nonLinCtlCurve(++nonLinCtl);
+			}
+			break;
+		case GLUT_KEY_DOWN:
+			if (nonLinCtl > NON_LIN_CTL_LO) {
+				nonLin = nonLinCtlCurve(--nonLinCtl);
+			}
 			break;
 		default:
 			break;
@@ -185,8 +236,10 @@ int main(int argc, char *argv[]) {
 	// calculate precomputed constants
 	refreshMillis = 1000 / FRAMERATE;
 	animFrames = animDuration * FRAMERATE;
+	nonLin = nonLinCtlCurve(nonLinCtl);
 
 	// run initialization functions
+	putenv((char *) "__GL_SYNC_TO_VBLANK=1");
 	glutInit(&argc, argv);
 	rnd_init();
 	circInit();
@@ -195,6 +248,7 @@ int main(int argc, char *argv[]) {
 	// register functions & enter main loop
 	glutReshapeFunc(animReshape);
 	glutKeyboardFunc(animKeyboard);
+	glutSpecialFunc(animSpecialKeys);
 	glutDisplayFunc(animDisplay);
 	glutTimerFunc(0, animTimer, 0);
 	glutMainLoop();
