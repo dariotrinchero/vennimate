@@ -17,23 +17,24 @@
 
 /* --- user-set parameters -------------------------------------------------- */
 
-#define CIRCLE_PTS 250
-#define SCALE      14.5
-#define ALPHA      0.27f
-#define FRAMERATE  60
+#define CIRCLE_PTS		5
+#define SCALE			14.5
+#define ALPHA			0.27f
+#define FRAMERATE		60
+#define MULTISAMPLING	6
 
 double animDuration = 2.7;
 double nonLinearity = 18;
 
 /* --- precomputed constants ------------------------------------------------ */
 
-unsigned int refreshMillis;
-unsigned int animFrames;
+static unsigned int refreshMillis;
+static unsigned int animFrames;
 
 /* --- animation trackers --------------------------------------------------- */
 
-unsigned int currGroupIdx = 0;
-unsigned int currAnimFrame = 0;
+static unsigned int currGroupIdx = 0;
+static unsigned int currAnimFrame = 0;
 
 /* --- initialization routines ---------------------------------------------- */
 
@@ -62,20 +63,31 @@ void circInit(void) {
 }
 
 void animInit(void) {
+	//glutSetOption(GLUT_MULTISAMPLE, MULTISAMPLING);
+	//glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_ALPHA | GLUT_MULTISAMPLE);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_ALPHA);
 
 	glutCreateWindow("Circles");
 	glutFullScreen();
 	glutSetCursor(GLUT_CURSOR_NONE);
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA_SATURATE, GL_ONE); // TODO (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)?
-
 	glEnable(GL_POLYGON_SMOOTH);
 	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_LINE_SMOOTH);
+	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_POINT_SMOOTH);
+	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+
+    glDisable(GL_MULTISAMPLE);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA_SATURATE, GL_ONE); // (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)?
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
+
+	//glEnable(GL_MULTISAMPLE);
+	//glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
 
 	glDisable(GL_DEPTH_TEST);
 
@@ -112,6 +124,7 @@ void animDisplay(void) {
 	double interpolateStep;
 	unsigned int nextGroupIdx;
 	double (*currGroup)[3], (*nextGroup)[3];
+	unsigned int j;
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -120,7 +133,7 @@ void animDisplay(void) {
 	currGroup = circleGroups[groupOrder[currGroupIdx]];
 	nextGroup = circleGroups[groupOrder[nextGroupIdx]];
 
-	for (int j = 0; j < 4; j++) {
+	for (j = 0; j < 4; j++) {
 		drawCircle(
 			currGroup[j][0] * (1 - interpolateStep) + nextGroup[j][0] * interpolateStep,
 			currGroup[j][1] * (1 - interpolateStep) + nextGroup[j][1] * interpolateStep,
