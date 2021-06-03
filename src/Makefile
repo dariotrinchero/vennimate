@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Makefile for Ising Model
+# Makefile for Vennimate
 #-------------------------------------------------------------------------------
 
 # compiler flags
@@ -29,9 +29,6 @@ LOCALBIN = ~/.local/bin
 .PHONY: all clean install uninstall
 
 all: circles
-
-tex: $(TEXDIR)/writeup.tex
-	$(TEXCOMP) $^ && $(TEXCOMP) $^
 
 clean:
 	$(RM) $(foreach EXEFILE, $(EXES), $(BINDIR)/$(EXEFILE))
