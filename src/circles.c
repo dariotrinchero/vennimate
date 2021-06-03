@@ -18,7 +18,7 @@
 
 /* --- user-set parameters -------------------------------------------------- */
 
-#define CIRCLE_PTS		200
+#define CIRCLE_PTS		180
 #define SCALE			200.0f
 #define ALPHA			0.27f
 #define FRAMERATE		60
@@ -35,6 +35,7 @@ int nonLinCtl = 12; // bounds: NON_LIN_CTL_LO, NON_LIN_CTL_HI
 #define DURATION_CTL_DELTA	0.1
 
 #define UI_TOAST_DURATION	3
+#define INTERP_CURVE_PTS	80
 static unsigned int uiToastFrames = UI_TOAST_DURATION * FRAMERATE;
 
 /* precomputed in main */
@@ -125,14 +126,14 @@ double animEase(double t, double nonLin) {
 	else return 1 - 0.5 * pow(2 * (1 - t), nonLin);
 }
 
-void drawInterpCurve(double x, double y, double width, double height, unsigned int samples) {
+void drawInterpCurve(double x, double y, double width, double height, double currTime) {
 	unsigned int i;
-	double time, currTime = currAnimFrame / (double) animFrames;
+	double time;
 
 	glBegin(GL_LINE_STRIP);
 	glColor4f(1.0f, 1.0f, 1.0f, 0.3f);
-	for (i = 0; i < samples; i++) {
-		time = i / (double) samples;
+	for (i = 0; i < INTERP_CURVE_PTS; i++) {
+		time = i / (double) INTERP_CURVE_PTS;
 		if (time >= currTime) glColor4f(1.0f, 1.0f, 1.0f, 0.1f);
 		glVertex2f(x + width * time, y + height * animEase(time, nonLin));
 	}
@@ -142,14 +143,15 @@ void drawInterpCurve(double x, double y, double width, double height, unsigned i
 }
 
 void animDisplay(void) {
-	double interpolateStep;
+	double currTime, interpolateStep;
 	unsigned int nextGroupIdx;
 	double (*currGroup)[3], (*nextGroup)[3];
 	unsigned int j;
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	interpolateStep = animEase(currAnimFrame / (double) animFrames, nonLin);
+	currTime = currAnimFrame / (double) animFrames;
+	interpolateStep = animEase(currTime, nonLin);
 	nextGroupIdx = (currGroupIdx + 1) % NUM_GROUPS;
 	currGroup = circleGroups[groupOrder[currGroupIdx]];
 	nextGroup = circleGroups[groupOrder[nextGroupIdx]];
@@ -163,11 +165,13 @@ void animDisplay(void) {
 	}
 
 	if (permaToast || currUiToastFrame > 0) {
-		drawInterpCurve(currWidth / 2 - 55, -currHeight / 2 + 5, 50, 30, 100);
+		drawInterpCurve(currWidth / 2 - 55, -currHeight / 2 + 5, 50, 30, currTime);
 	}
 
-	currAnimFrame = (currAnimFrame + 1) % animFrames;
-	if (!currAnimFrame) currGroupIdx = nextGroupIdx;
+	if (++currAnimFrame >= animFrames) {
+		currAnimFrame -= animFrames;
+		currGroupIdx = nextGroupIdx;
+	}
 
 	glutSwapBuffers(); // double-buffering for smoother animation
 }
@@ -175,7 +179,7 @@ void animDisplay(void) {
 void animReshape(GLsizei width, GLsizei height) {
 	GLfloat aspect;
 
-	// save new width & height
+	// prevent divisions by 0
 	if (!height) height = 1;
 	if (!width) width = 1;
 
