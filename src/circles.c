@@ -31,7 +31,7 @@ int nonLinCtl = 12; // bounds: NON_LIN_CTL_LO, NON_LIN_CTL_HI
 #define NON_LIN_CTL_HI		21
 #define NON_LIN_CTL_LO		-1
 #define DURATION_CTL_LO		0.2
-#define DURATION_CTL_DELTA	0.05
+#define DURATION_CTL_DELTA	0.1
 
 /* precomputed in main */
 static unsigned int refreshMillis;
@@ -90,7 +90,7 @@ void animInit(void) {
 	glDisable(GL_DEPTH_TEST);
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
-	glLineWidth(1.5);
+	glLineWidth(1.8);
 }
 
 /* --- animation routines --------------------------------------------------- */
@@ -121,13 +121,14 @@ double animEase(double t, double nonLin) {
 
 void drawInterpCurve(double x, double y, double width, double height, unsigned int samples) {
 	unsigned int i;
-	double t;
+	double time, currTime = currAnimFrame / (double) animFrames;
 
 	glBegin(GL_LINE_STRIP);
-	glColor4f(1.0f, 1.0f, 1.0f, 0.4f);
+	glColor4f(1.0f, 1.0f, 1.0f, 0.3f);
 	for (i = 0; i < samples; i++) {
-		t = i / (double) samples;
-		glVertex2f(x + width * t, y + height * animEase(t, nonLin));
+		time = i / (double) samples;
+		if (time >= currTime) glColor4f(1.0f, 1.0f, 1.0f, 0.1f);
+		glVertex2f(x + width * time, y + height * animEase(time, nonLin));
 	}
 	glEnd();
 }
