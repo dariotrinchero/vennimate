@@ -10,8 +10,9 @@
  */
 
 #include <stdio.h>
-#include <GL/glut.h>
 #include <math.h>
+#include <GL/glut.h>
+
 #include "circles.h"
 #include "random.h"
 
@@ -33,6 +34,9 @@ int nonLinCtl = 12; // bounds: NON_LIN_CTL_LO, NON_LIN_CTL_HI
 #define DURATION_CTL_LO		0.2
 #define DURATION_CTL_DELTA	0.1
 
+#define UI_TOAST_DURATION	3
+static unsigned int uiToastFrames = UI_TOAST_DURATION * FRAMERATE;
+
 /* precomputed in main */
 static unsigned int refreshMillis;
 static unsigned int animFrames;
@@ -42,6 +46,8 @@ static double nonLin;
 
 static unsigned int currGroupIdx = 0;
 static unsigned int currAnimFrame = 0;
+static unsigned int currUiToastFrame = 0;
+static unsigned short permaToast = 0;
 static GLfloat currWidth, currHeight;
 
 /* --- initialization routines ---------------------------------------------- */
@@ -131,6 +137,8 @@ void drawInterpCurve(double x, double y, double width, double height, unsigned i
 		glVertex2f(x + width * time, y + height * animEase(time, nonLin));
 	}
 	glEnd();
+
+	if (!permaToast) currUiToastFrame--;
 }
 
 void animDisplay(void) {
@@ -154,7 +162,9 @@ void animDisplay(void) {
 		);
 	}
 
-	drawInterpCurve(currWidth / 2 - 55, -currHeight / 2 + 5, 50, 30, 100);
+	if (permaToast || currUiToastFrame > 0) {
+		drawInterpCurve(currWidth / 2 - 55, -currHeight / 2 + 5, 50, 30, 100);
+	}
 
 	currAnimFrame = (currAnimFrame + 1) % animFrames;
 	if (!currAnimFrame) currGroupIdx = nextGroupIdx;
@@ -192,7 +202,9 @@ void animKeyboard(unsigned char key, int x, int y) {
 		case 27: // esc
 			exit(EXIT_SUCCESS);
 			break;
-		default:
+		case ' ':
+			permaToast = !permaToast;
+			currUiToastFrame = 0;
 			break;
 	}
 }
@@ -202,23 +214,22 @@ double nonLinCtlCurve(int nonLinCtl) {
 	else return pow(2, nonLinCtl / 2.0 - 2) + 1;
 }
 
-void animSpecialKeys(int key, int x, int y) {
-	unsigned int oldAnimFrames;
+void updateAnimDuration(double delta) {
+	double oldAnimFrames = animFrames;
+	animDuration += delta;
+	animFrames = animDuration * FRAMERATE;
+	currAnimFrame *= animFrames / oldAnimFrames;
+}
 
+void animSpecialKeys(int key, int x, int y) {
 	switch (key) {
 		case GLUT_KEY_RIGHT:
 			if (animDuration > DURATION_CTL_LO) {
-				animDuration -= DURATION_CTL_DELTA;
-				oldAnimFrames = animFrames;
-				animFrames = animDuration * FRAMERATE;
-				currAnimFrame = currAnimFrame / (double) oldAnimFrames * animFrames;
+				updateAnimDuration(-DURATION_CTL_DELTA);
 			}
 			break;
 		case GLUT_KEY_LEFT:
-			animDuration += DURATION_CTL_DELTA;
-			oldAnimFrames = animFrames;
-			animFrames = animDuration * FRAMERATE;
-			currAnimFrame = currAnimFrame / (double) oldAnimFrames * animFrames;
+			updateAnimDuration(DURATION_CTL_DELTA);
 			break;
 		case GLUT_KEY_UP:
 			if (nonLinCtl < NON_LIN_CTL_HI) {
@@ -230,9 +241,10 @@ void animSpecialKeys(int key, int x, int y) {
 				nonLin = nonLinCtlCurve(--nonLinCtl);
 			}
 			break;
-		default:
-			break;
 	}
+
+	// display toast for any special key press
+	currUiToastFrame = uiToastFrames;
 }
 
 void animTimer(int value) {
