@@ -10,11 +10,15 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <GL/glut.h>
+#include <GL/gl.h>
 
 #include "circles.h"
 #include "random.h"
+
+#define UNUSED(x) (void)(x)
 
 /* --- user-set parameters -------------------------------------------------- */
 
@@ -22,7 +26,6 @@
 #define SCALE			200.0f
 #define ALPHA			0.27f
 #define FRAMERATE		60
-#define MULTISAMPLING	16
 
 double animDuration = 2.7;
 int nonLinCtl = 12; // bounds: NON_LIN_CTL_LO, NON_LIN_CTL_HI
@@ -53,7 +56,8 @@ static GLfloat currWidth, currHeight;
 
 /* --- initialization routines ---------------------------------------------- */
 
-void circInit(void) {
+void circInit(void)
+{
 	unsigned int i, j, k, tmp;
 	int idx;
 	double avCoord;
@@ -77,7 +81,8 @@ void circInit(void) {
 	}
 }
 
-void animInit(void) {
+void animInit(void)
+{
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
 	glutCreateWindow("Circles");
@@ -92,17 +97,17 @@ void animInit(void) {
 
 	glEnable(GL_MULTISAMPLE);
 	glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
-	glutSetOption(GLUT_MULTISAMPLE, MULTISAMPLING);
 
 	glDisable(GL_DEPTH_TEST);
 
-	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClearColor(0, 0, 0, 0);
 	glLineWidth(1.8);
 }
 
 /* --- animation routines --------------------------------------------------- */
 
-void drawCircle(double cx, double cy, double r) {
+void drawCircle(double cx, double cy, double r)
+{
 	unsigned int i;
 	double theta = 2 * M_PI / CIRCLE_PTS;
 	double c = cos(theta), s = sin(theta);
@@ -121,20 +126,22 @@ void drawCircle(double cx, double cy, double r) {
 	glEnd();
 }
 
-double animEase(double t, double nonLin) {
+double animEase(double t, double nonLin)
+{
 	if (t < 0.5) return 0.5 * pow(2 * t, nonLin);
 	else return 1 - 0.5 * pow(2 * (1 - t), nonLin);
 }
 
-void drawInterpCurve(double x, double y, double width, double height, double currTime) {
+void drawInterpCurve(double x, double y, double width, double height, double currTime)
+{
 	unsigned int i;
 	double time;
 
 	glBegin(GL_LINE_STRIP);
-	glColor4f(1.0f, 1.0f, 1.0f, 0.3f);
+	glColor4f(1, 1, 1, 0.4f);
 	for (i = 0; i < INTERP_CURVE_PTS; i++) {
 		time = i / (double) INTERP_CURVE_PTS;
-		if (time >= currTime) glColor4f(1.0f, 1.0f, 1.0f, 0.1f);
+		if (time >= currTime) glColor4f(1, 1, 1, 0.2f);
 		glVertex2f(x + width * time, y + height * animEase(time, nonLin));
 	}
 	glEnd();
@@ -142,7 +149,8 @@ void drawInterpCurve(double x, double y, double width, double height, double cur
 	if (!permaToast) currUiToastFrame--;
 }
 
-void animDisplay(void) {
+void animDisplay(void)
+{
 	double currTime, interpolateStep;
 	unsigned int nextGroupIdx;
 	double (*currGroup)[3], (*nextGroup)[3];
@@ -176,7 +184,8 @@ void animDisplay(void) {
 	glutSwapBuffers(); // double-buffering for smoother animation
 }
 
-void animReshape(GLsizei width, GLsizei height) {
+void animReshape(GLsizei width, GLsizei height)
+{
 	GLfloat aspect;
 
 	// prevent divisions by 0
@@ -201,7 +210,10 @@ void animReshape(GLsizei width, GLsizei height) {
 	}
 }
 
-void animKeyboard(unsigned char key, int x, int y) {
+void animKeyboard(unsigned char key, int x, int y)
+{
+	UNUSED(x);
+	UNUSED(y);
 	switch (key) {
 		case 27: // esc
 			exit(EXIT_SUCCESS);
@@ -213,19 +225,24 @@ void animKeyboard(unsigned char key, int x, int y) {
 	}
 }
 
-double nonLinCtlCurve(int nonLinCtl) {
+double nonLinCtlCurve(int nonLinCtl)
+{
 	if (nonLinCtl == -1) return 1;
 	else return pow(2, nonLinCtl / 2.0 - 2) + 1;
 }
 
-void updateAnimDuration(double delta) {
+void updateAnimDuration(double delta)
+{
 	double oldAnimFrames = animFrames;
 	animDuration += delta;
 	animFrames = animDuration * FRAMERATE;
 	currAnimFrame *= animFrames / oldAnimFrames;
 }
 
-void animSpecialKeys(int key, int x, int y) {
+void animSpecialKeys(int key, int x, int y)
+{
+	UNUSED(x);
+	UNUSED(y);
 	switch (key) {
 		case GLUT_KEY_RIGHT:
 			if (animDuration > DURATION_CTL_LO) {
@@ -251,14 +268,17 @@ void animSpecialKeys(int key, int x, int y) {
 	currUiToastFrame = uiToastFrames;
 }
 
-void animTimer(int value) {
+void animTimer(int value)
+{
+	UNUSED(value);
 	glutPostRedisplay();
 	glutTimerFunc(refreshMillis, animTimer, 0);
 }
 
 /* --- main method ---------------------------------------------------------- */
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	// calculate precomputed constants
 	refreshMillis = 1000 / FRAMERATE;
 	animFrames = animDuration * FRAMERATE;

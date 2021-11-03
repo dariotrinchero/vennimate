@@ -3,11 +3,11 @@
 #-------------------------------------------------------------------------------
 
 # compiler flags
-DEBUG    = -ggdb
+DEBUG    = -g3
 OPTIMISE = -O3 # O0 -> compilation time | O3 -> execution time
 WARNINGS = -Wall -Wextra -Wno-variadic-macros -Wno-overlength-strings -pedantic
 LIBS     = -lglut -lGLU -lGL -lm
-CFLAGS   = $(DEBUG) $(OPTIMISE) $(WARNINGS) -fPIC
+CFLAGS   = $(DEBUG) $(OPTIMISE) $(WARNINGS)
 DFLAGS   = #-DDEBUG_CIRCLES
 
 # commands
