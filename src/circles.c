@@ -22,23 +22,25 @@
 
 /* --- user-set parameters -------------------------------------------------- */
 
-#define CIRCLE_PTS		180
-#define SCALE			200.0f
-#define ALPHA			0.27f
-#define FRAMERATE		60
+#define CIRCLE_PTS     200
+#define SCALE          200.0f
+#define BG_RGB         0.1059, 0.1137, 0.1098
+#define FG_RGBA        0.945, 0.918, 0.855, 0.27
+#define FILLED_CIRCLES 1
+#define FRAMERATE      60
 
 double animDuration = 2.7;
 int nonLinCtl = 12; // bounds: NON_LIN_CTL_LO, NON_LIN_CTL_HI
 
 /* --- constants ------------------------------------------------------------ */
 
-#define NON_LIN_CTL_HI		21
-#define NON_LIN_CTL_LO		-1
-#define DURATION_CTL_LO		0.2
-#define DURATION_CTL_DELTA	0.1
+#define NON_LIN_CTL_HI     21
+#define NON_LIN_CTL_LO     -1
+#define DURATION_CTL_LO    0.2
+#define DURATION_CTL_DELTA 0.1
 
-#define UI_TOAST_DURATION	3
-#define INTERP_CURVE_PTS	80
+#define UI_TOAST_DURATION  3
+#define INTERP_CURVE_PTS   80
 static unsigned int uiToastFrames = UI_TOAST_DURATION * FRAMERATE;
 
 /* precomputed in main */
@@ -52,6 +54,7 @@ static unsigned int currGroupIdx = 0;
 static unsigned int currAnimFrame = 0;
 static unsigned int currUiToastFrame = 0;
 static unsigned short permaToast = 0;
+static unsigned short filledCircles = FILLED_CIRCLES;
 static GLfloat currWidth, currHeight;
 
 /* --- initialization routines ---------------------------------------------- */
@@ -100,7 +103,7 @@ void animInit(void)
 
 	glDisable(GL_DEPTH_TEST);
 
-	glClearColor(0, 0, 0, 0);
+	glClearColor(BG_RGB, 0);
 	glLineWidth(1.8);
 }
 
@@ -114,9 +117,9 @@ void drawCircle(double cx, double cy, double r)
 	double x = r, y = 0;
 	double t;
 
-	glBegin(GL_TRIANGLE_FAN);
-	glColor4f(1, 1, 1, ALPHA);
-	for (i = 0; i < CIRCLE_PTS; i++) {
+	glBegin(filledCircles ? GL_TRIANGLE_FAN : GL_LINE_STRIP);
+	glColor4f(FG_RGBA);
+	for (i = 0; i <= CIRCLE_PTS; i++) {
 		glVertex2f(x + cx, y + cy);
 		// apply rotation matrix
 		t = x;
@@ -215,13 +218,15 @@ void animKeyboard(unsigned char key, int x, int y)
 	UNUSED(x);
 	UNUSED(y);
 	switch (key) {
-		case 27: // esc
-			exit(EXIT_SUCCESS);
-			break;
 		case ' ':
 			permaToast = !permaToast;
 			currUiToastFrame = 0;
 			break;
+		case 'o':
+			filledCircles = !filledCircles;
+			break;
+		default:
+			exit(EXIT_SUCCESS);
 	}
 }
 
@@ -262,6 +267,8 @@ void animSpecialKeys(int key, int x, int y)
 				nonLin = nonLinCtlCurve(--nonLinCtl);
 			}
 			break;
+		default:
+			exit(EXIT_SUCCESS);
 	}
 
 	// display toast for any special key press
